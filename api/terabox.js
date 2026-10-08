@@ -11,9 +11,9 @@ const BRANDING = {
   credit: "Powered by 𝐙𝐗𝐇 𝐎𝐅𝐅𝐈𝐂𝐈𝐀𝐋"
 };
 
-// یہاں آپ اپنی مرضی سے کوئی بھی اوپن سورس یا مفت API استعمال کر سکتے ہیں۔
-// اس وقت یہ ایک مقبول اوپن سورس API استعمال کر رہے ہیں۔
-const UPSTREAM_API = "https://terabox-api.vercel.app/api"; 
+// ✅ یہاں نیا کام کرنے والا API استعمال کریں
+// (یہ اوپن سورس پروجیکٹ devrobinop/tera-api سے ہے)
+const UPSTREAM_API = "https://terabox-worker.robinkumarshakya103.workers.dev/api";
 
 export default async function handler(req, res) {
   // CORS Headers
@@ -46,15 +46,18 @@ export default async function handler(req, res) {
   }
 
   try {
-    // اپ اسٹریم API کو کال کریں
+    // نئے اپ اسٹریم API کو کال کریں
     const targetUrl = `${UPSTREAM_API}?url=${encodeURIComponent(teraboxUrl)}`;
     const upstream = await fetch(targetUrl);
 
     if (!upstream.ok) {
+      // اگر یہ API بھی کام نہ کرے تو صاف ایرر دیں
+      const errorText = await upstream.text();
       return res.status(upstream.status).json({
         status: "error",
         ...BRANDING,
-        message: `Upstream API error: ${upstream.status}`
+        message: `Upstream API error: ${upstream.status}`,
+        upstream_response: errorText.slice(0, 200) // صرف پہلے 200 حروف
       });
     }
 
@@ -87,4 +90,4 @@ export default async function handler(req, res) {
       error: error.message
     });
   }
-    }
+     }
