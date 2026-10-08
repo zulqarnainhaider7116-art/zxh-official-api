@@ -1,28 +1,31 @@
-import { BRANDING } from "./shared/branding.js";
-import { setCors } from "./shared/cors.js";
-import { detectPlatform } from "./shared/detect.js";
+const BRANDING = {
+  brand: "𝐙𝐗𝐇 𝐎𝐅𝐅𝐈𝐂𝐈𝐀𝐋",
+  dev: "𝐙𝐔𝐋𝐐𝐀𝐑𝐍𝐀𝐈𝐍 𝐗 𝐇𝐀𝐈𝐃𝐄𝐑",
+  channel: "https://whatsapp.com/channel/0029Vb6lszR7YSd3iYfa2V0n",
+  credit: "Powered by 𝐙𝐗𝐇 𝐎𝐅𝐅𝐈𝐂𝐈𝐀𝐋",
+  version: "1.0.0"
+};
 
 const UPSTREAM = "https://fak-media-downloaders.jokerkeep057.workers.dev/dl/?url=";
 
 export default async function handler(req, res) {
-  setCors(res);
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
   if (req.method === "OPTIONS") return res.status(200).end();
 
   const url = req.query.url;
   if (!url) {
     return res.status(400).json({
-      status: "error",
-      ...BRANDING,
-      platform: "twitter",
-      message: "?url= required"
+      status: "error", ...BRANDING, platform: "twitter", message: "?url= required"
     });
   }
 
-  if (detectPlatform(url) !== "twitter") {
+  const u = url.toLowerCase();
+  if (!u.includes("twitter.com") && !u.includes("x.com")) {
     return res.status(400).json({
-      status: "error",
-      ...BRANDING,
-      platform: "twitter",
+      status: "error", ...BRANDING, platform: "twitter",
       message: "Not a Twitter/X URL. Use /api/auto instead."
     });
   }
@@ -32,9 +35,7 @@ export default async function handler(req, res) {
 
     if (!upstream.ok) {
       return res.status(upstream.status).json({
-        status: "error",
-        ...BRANDING,
-        platform: "twitter",
+        status: "error", ...BRANDING, platform: "twitter",
         message: `Upstream error: ${upstream.status}`
       });
     }
@@ -44,18 +45,14 @@ export default async function handler(req, res) {
       data = await upstream.json();
     } catch (parseError) {
       return res.status(502).json({
-        status: "error",
-        ...BRANDING,
-        platform: "twitter",
-        message: "Upstream API ne JSON ke bajaye HTML bheja. Video private ho sakti hai ya link ghalat hai.",
+        status: "error", ...BRANDING, platform: "twitter",
+        message: "Upstream API ne JSON ke bajaye HTML bheja.",
         requested_url: url
       });
     }
 
     return res.status(200).json({
-      status: "success",
-      ...BRANDING,
-      platform: "twitter",
+      status: "success", ...BRANDING, platform: "twitter",
       requested_url: url,
       timestamp: new Date().toISOString(),
       data
@@ -63,10 +60,7 @@ export default async function handler(req, res) {
 
   } catch (e) {
     return res.status(500).json({
-      status: "error",
-      ...BRANDING,
-      platform: "twitter",
-      error: e.message
+      status: "error", ...BRANDING, platform: "twitter", error: e.message
     });
   }
 }
