@@ -1,19 +1,44 @@
-import { BRANDING } from "./shared/branding.js";
-import { setCors } from "./shared/cors.js";
-import { detectPlatform } from "./shared/detect.js";
+const BRANDING = {
+  brand: "𝐙𝐗𝐇 𝐎𝐅𝐅𝐈𝐂𝐈𝐀𝐋",
+  dev: "𝐙𝐔𝐋𝐐𝐀𝐑𝐍𝐀𝐈𝐍 𝐗 𝐇𝐀𝐈𝐃𝐄𝐑",
+  channel: "https://whatsapp.com/channel/0029Vb6lszR7YSd3iYfa2V0n",
+  credit: "Powered by 𝐙𝐗𝐇 𝐎𝐅𝐅𝐈𝐂𝐈𝐀𝐋",
+  version: "1.0.0"
+};
 
-// 🔗 Upstream APIs (dost ki API)
 const UPSTREAM = {
   tiktok:    "https://fak-media-downloaders.jokerkeep057.workers.dev/dl/?url=",
   instagram: "https://fak-media-downloaders.jokerkeep057.workers.dev/dl/?url=",
   youtube:   "https://fak-media-downloaders.jokerkeep057.workers.dev/dl/?url=",
   facebook:  "https://fak-media-downloaders.jokerkeep057.workers.dev/dl/?url=",
   twitter:   "https://fak-media-downloaders.jokerkeep057.workers.dev/dl/?url=",
-  // ... baqi platforms (snapchat, pinterest, etc.) agar hain to yahan add karein
+  snapchat:  "https://fak-media-downloaders.jokerkeep057.workers.dev/dl/?url=",
+  pinterest: "https://fak-media-downloaders.jokerkeep057.workers.dev/dl/?url=",
+  linkedin:  "https://fak-media-downloaders.jokerkeep057.workers.dev/dl/?url=",
+  threads:   "https://fak-media-downloaders.jokerkeep057.workers.dev/dl/?url=",
+  reddit:    "https://fak-media-downloaders.jokerkeep057.workers.dev/dl/?url=",
 };
 
+function detectPlatform(url) {
+  if (!url) return null;
+  const u = url.toLowerCase();
+  if (u.includes("tiktok.com")) return "tiktok";
+  if (u.includes("instagram.com")) return "instagram";
+  if (u.includes("youtube.com") || u.includes("youtu.be")) return "youtube";
+  if (u.includes("facebook.com") || u.includes("fb.watch")) return "facebook";
+  if (u.includes("twitter.com") || u.includes("x.com")) return "twitter";
+  if (u.includes("snapchat.com")) return "snapchat";
+  if (u.includes("pinterest.com")) return "pinterest";
+  if (u.includes("linkedin.com")) return "linkedin";
+  if (u.includes("threads.net")) return "threads";
+  if (u.includes("reddit.com")) return "reddit";
+  return "unknown";
+}
+
 export default async function handler(req, res) {
-  setCors(res);
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "GET") {
@@ -23,7 +48,8 @@ export default async function handler(req, res) {
   const videoUrl = req.query.url;
   if (!videoUrl) {
     return res.status(400).json({
-      status: "error", ...BRANDING, message: "?url= parameter required",
+      status: "error", ...BRANDING,
+      message: "?url= parameter required",
       example: "/api/auto?url=https://tiktok.com/..."
     });
   }
@@ -31,30 +57,27 @@ export default async function handler(req, res) {
   const platform = detectPlatform(videoUrl);
   if (platform === "unknown" || !UPSTREAM[platform]) {
     return res.status(400).json({
-      status: "error", ...BRANDING, message: `Unsupported platform: ${platform}`,
+      status: "error", ...BRANDING,
+      message: `Unsupported platform: ${platform}`,
       supported: Object.keys(UPSTREAM)
     });
   }
 
   try {
     const targetUrl = `${UPSTREAM[platform]}${encodeURIComponent(videoUrl)}`;
-    
-    // ✅ FIX 1: Headers hata diye, taake upstream API sahi jawab de
     const upstream = await fetch(targetUrl);
 
     if (!upstream.ok) {
       return res.status(upstream.status).json({
         status: "error", ...BRANDING, platform,
-        message: `Upstream error: ${upstream.status} ${upstream.statusText}`
+        message: `Upstream error: ${upstream.status}`
       });
     }
 
     let data;
-    // ✅ FIX 2: JSON parse karne ke liye try-catch
     try {
       data = await upstream.json();
     } catch (parseError) {
-      // Agar upstream JSON ke bajaye HTML bhej de
       return res.status(502).json({
         status: "error", ...BRANDING, platform,
         message: "Upstream API ne JSON ke bajaye HTML bheja. Link check karo ya video private ho sakti hai.",
@@ -62,7 +85,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // Agar sab theek hai to data wapas bhejo
     return res.status(200).json({
       status: "success", ...BRANDING, platform,
       requested_url: videoUrl,
@@ -71,11 +93,10 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    // Agar fetch mein koi aur network error aaye
     return res.status(500).json({
       status: "error", ...BRANDING, platform,
       message: "Failed to fetch from upstream",
       error: error.message
     });
   }
-        }
+}
