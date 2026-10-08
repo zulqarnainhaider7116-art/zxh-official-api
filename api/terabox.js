@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════
-   TERABOX DOWNLOADER API
+   TERABOX DOWNLOADER API (Fallback System)
    Brand: 𝐙𝐗𝐇 𝐎𝐅𝐅𝐈𝐂𝐈𝐀𝐋
    Dev: 𝐙𝐔𝐋𝐐𝐀𝐑𝐍𝐀𝐈𝐍 𝐗 𝐇𝐀𝐈𝐃𝐄𝐑
    ═══════════════════════════════════════════════════════════ */
@@ -10,10 +10,15 @@ const BRANDING = {
   channel: "https://whatsapp.com/channel/0029Vb6lszR7YSd3iYfa2V0n",
   credit: "Powered by 𝐙𝐗𝐇 𝐎𝐅𝐅𝐈𝐂𝐈𝐀𝐋"
 };
-const UPSTREAM_API = "https://playterabox.online/api";
+
+// ✅ کام کرنے والے APIs کی فہرست (ترتیب وار آزمائے جائیں گے)
+const API_ENDPOINTS = [
+  "https://terabox-worker.robinkumarshakya103.workers.dev/api",
+  "https://playterabox.online/api/extract",
+  "https://pika-terabox-dl.vercel.app/api"
+];
 
 export default async function handler(req, res) {
-  // CORS Headers
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -33,58 +38,60 @@ export default async function handler(req, res) {
     });
   }
 
-  // URL چیک کریں کہ یہ ٹیرا باکس کا ہی ہے
   if (!teraboxUrl.toLowerCase().includes("terabox.com") && !teraboxUrl.toLowerCase().includes("terabox.app")) {
-    return res.status(400).json({
-      status: "error",
-      ...BRANDING,
-      message: "Only Terabox URLs are supported."
-    });
+    return res.status(400).json({ status: "error", ...BRANDING, message: "Only Terabox URLs are supported." });
   }
 
-  try {
-    // نئے اپ اسٹریم API کو کال کریں
-    const targetUrl = `${UPSTREAM_API}?url=${encodeURIComponent(teraboxUrl)}`;
-    const upstream = await fetch(targetUrl);
+  // ✅ ملٹی-API Fallback لوپ
+  let data = null;
+  let successEndpoint = null;
 
-    if (!upstream.ok) {
-      // اگر یہ API بھی کام نہ کرے تو صاف ایرر دیں
-      const errorText = await upstream.text();
-      return res.status(upstream.status).json({
-        status: "error",
-        ...BRANDING,
-        message: `Upstream API error: ${upstream.status}`,
-        upstream_response: errorText.slice(0, 200) // صرف پہلے 200 حروف
-      });
-    }
-
-    let data;
+  for (const endpoint of API_ENDPOINTS) {
     try {
-      data = await upstream.json();
-    } catch (parseError) {
-      return res.status(502).json({
-        status: "error",
-        ...BRANDING,
-        message: "Upstream API نے JSON کے بجائے HTML بھیجا۔ لنک چیک کریں۔"
-      });
-    }
+      const targetUrl = `${endpoint}?url=${encodeURIComponent(teraboxUrl)}`;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000); // 8 سیکنڈ ٹائم آؤٹ
 
-    // اپنی برانڈنگ کے ساتھ ڈیٹا واپس کریں
-    return res.status(200).json({
-      status: "success",
+      const upstream = await fetch(targetUrl, { signal: controller.signal });
+      clearTimeout(timeout);
+
+      if (!upstream.ok) {
+        console.warn(`Endpoint ${endpoint} failed with status ${upstream.status}`);
+        continue;
+      }
+
+      const json = await upstream.json();
+      
+      // چیک کریں کہ جواب میں ڈیٹا موجود ہے
+      if (json && (json.success || json.status === 'success' || json.data || json.file_name)) {
+        data = json;
+        successEndpoint = endpoint;
+        break;
+      } else {
+        console.warn(`Endpoint ${endpoint} returned invalid data`);
+      }
+    } catch (e) {
+      console.warn(`Endpoint ${endpoint} error:`, e.message);
+      continue;
+    }
+  }
+
+  if (!data) {
+    return res.status(502).json({
+      status: "error",
       ...BRANDING,
       platform: "terabox",
-      requested_url: teraboxUrl,
-      timestamp: new Date().toISOString(),
-      data: data
-    });
-
-  } catch (error) {
-    return res.status(500).json({
-      status: "error",
-      ...BRANDING,
-      message: "Failed to fetch from upstream API",
-      error: error.message
+      message: "تمام APIs ناکام رہیں۔ براہ کرم بعد میں دوبارہ کوشش کریں۔"
     });
   }
-     }
+
+  return res.status(200).json({
+    status: "success",
+    ...BRANDING,
+    platform: "terabox",
+    requested_url: teraboxUrl,
+    timestamp: new Date().toISOString(),
+    source: successEndpoint,
+    data: data
+  });
+      }
