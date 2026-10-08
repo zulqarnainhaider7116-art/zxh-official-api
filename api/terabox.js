@@ -10,10 +10,7 @@ const BRANDING = {
   channel: "https://whatsapp.com/channel/0029Vb6lszR7YSd3iYfa2V0n",
   credit: "Powered by 𝐙𝐗𝐇 𝐎𝐅𝐅𝐈𝐂𝐈𝐀𝐋"
 };
-
-// ✅ یہاں نیا کام کرنے والا API استعمال کریں
-// (یہ اوپن سورس پروجیکٹ devrobinop/tera-api سے ہے)
-const UPSTREAM_API = "https://terabox-worker.robinkumarshakya103.workers.dev/api";
+const UPSTREAM_API = "https://playterabox.online/api";
 
 export default async function handler(req, res) {
   // CORS Headers
