@@ -1,0 +1,11 @@
+{
+  "name": "zxh-official-api",
+  "version": "1.0.0",
+  "description": "ZXH OFFICIAL - Multi Platform Media Downloader API",
+  "type": "module",
+  "author": "ZULQARNAIN X HAIDER",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  }
+}
