@@ -1,6 +1,6 @@
-import { BRANDING } from "./_shared/branding.js";
-import { setCors } from "./_shared/cors.js";
-import { detectPlatform } from "./_shared/detect.js";
+import { BRANDING } from "./shared/branding.js";
+import { setCors } from "./shared/cors.js";
+import { detectPlatform } from "./shared/detect.js";
 
 // 🔗 Upstream APIs (dost ki API)
 const UPSTREAM = {
@@ -21,7 +21,11 @@ export default async function handler(req, res) {
 
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "GET") {
-    return res.status(405).json({ status: "error", ...BRANDING, message: "GET method only" });
+    return res.status(405).json({
+      status: "error",
+      ...BRANDING,
+      message: "GET method only"
+    });
   }
 
   const videoUrl = req.query.url;
@@ -48,12 +52,7 @@ export default async function handler(req, res) {
 
   try {
     const targetUrl = `${UPSTREAM[platform]}${encodeURIComponent(videoUrl)}`;
-    const upstream = await fetch(targetUrl, {
-      headers: {
-        "User-Agent": "ZXH-Official-API/1.0",
-        "Accept": "application/json"
-      }
-    });
+    const upstream = await fetch(targetUrl);
 
     if (!upstream.ok) {
       return res.status(upstream.status).json({
@@ -64,7 +63,18 @@ export default async function handler(req, res) {
       });
     }
 
-    const data = await upstream.json();
+    let data;
+    try {
+      data = await upstream.json();
+    } catch (parseError) {
+      return res.status(502).json({
+        status: "error",
+        ...BRANDING,
+        platform,
+        message: "Upstream API ne JSON ke bajaye HTML bheja. Link check karo ya video private ho sakti hai.",
+        requested_url: videoUrl
+      });
+    }
 
     return res.status(200).json({
       status: "success",
@@ -84,4 +94,4 @@ export default async function handler(req, res) {
       error: error.message
     });
   }
-}
+  }
